@@ -4,6 +4,7 @@
    ============================================ */
 
 import './styles/main.css';
+import { initOceanScene, setCameraForProfile, setCameraForLanding } from './scene/OceanScene.js';
 
 // ── App State ──
 const AppState = {
@@ -54,6 +55,7 @@ function switchScreen(newState) {
       screens.landing.classList.add('active');
       dom.errorCard.style.display = 'none';
       dom.profileCard.style.display = '';
+      setCameraForLanding();
       break;
     case AppState.LOADING:
       screens.loading.classList.add('active');
@@ -61,6 +63,7 @@ function switchScreen(newState) {
       break;
     case AppState.PROFILE:
       screens.profile.classList.add('active');
+      setCameraForProfile();
       break;
   }
 }
@@ -278,13 +281,11 @@ function init() {
   // Start typewriter
   startTypewriter();
 
+  // Initialize 3D ocean scene
+  initOceanScene(dom.canvas);
+
   // Activate landing screen
   switchScreen(AppState.LANDING);
-
-  // Handle window resize
-  window.addEventListener('resize', () => {
-    // Will be used by Three.js scene in Phase 2
-  });
 
   console.log('🚢 GitBoat initialized');
 }
