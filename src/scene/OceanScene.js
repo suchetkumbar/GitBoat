@@ -44,6 +44,7 @@ let particles;
 let clock;
 let animationFrameId = null;
 let isRunning = false;
+let onUpdateCallbacks = [];
 
 // ── Public API ──
 
@@ -164,6 +165,22 @@ export function setAutoRotate(enabled) {
 export function setCameraForProfile() {
   if (camera && controls) {
     controls.autoRotateSpeed = 0.15;
+    // Animate camera closer to the boat
+    const targetPos = { x: 6, y: 5, z: 10 };
+    const current = camera.position;
+    const steps = 60;
+    let step = 0;
+    const moveCamera = () => {
+      if (step >= steps) return;
+      step++;
+      const t = step / steps;
+      const ease = 1 - Math.pow(1 - t, 3);
+      camera.position.x += (targetPos.x - current.x) * ease * 0.02;
+      camera.position.y += (targetPos.y - current.y) * ease * 0.02;
+      camera.position.z += (targetPos.z - current.z) * ease * 0.02;
+      requestAnimationFrame(moveCamera);
+    };
+    moveCamera();
   }
 }
 
@@ -191,6 +208,21 @@ export function disposeOceanScene() {
     controls.dispose();
   }
   window.removeEventListener('resize', handleResize);
+  onUpdateCallbacks = [];
+}
+
+/**
+ * Register a callback to be invoked each frame with (elapsed)
+ */
+export function onRenderUpdate(callback) {
+  onUpdateCallbacks.push(callback);
+}
+
+/**
+ * Remove a render update callback
+ */
+export function offRenderUpdate(callback) {
+  onUpdateCallbacks = onUpdateCallbacks.filter(cb => cb !== callback);
 }
 
 // ── Private Functions ──
@@ -320,6 +352,11 @@ function animate() {
   // Update controls
   if (controls) {
     controls.update();
+  }
+
+  // Run external update callbacks (boat animation etc.)
+  for (const cb of onUpdateCallbacks) {
+    cb(elapsed);
   }
 
   // Render

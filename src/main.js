@@ -4,7 +4,9 @@
    ============================================ */
 
 import './styles/main.css';
-import { initOceanScene, setCameraForProfile, setCameraForLanding } from './scene/OceanScene.js';
+import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onRenderUpdate, offRenderUpdate } from './scene/OceanScene.js';
+import { buildBoat, disposeBoat } from './boat/BoatBuilder.js';
+import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake } from './boat/BoatAnimator.js';
 
 // ── App State ──
 const AppState = {
@@ -14,6 +16,9 @@ const AppState = {
 };
 
 let currentState = AppState.LANDING;
+let currentBoat = null;
+let boatWake = null;
+let boatUpdateCallback = null;
 
 // ── DOM References ──
 const screens = {
@@ -255,6 +260,7 @@ function handleSearch(e) {
       };
 
       showProfile(profile, stats);
+      spawnBoat(stats);
       setTimeout(animateCountUp, 300);
     } catch (err) {
       showError(err.message || 'Could not find this sailor on the seas.');
@@ -263,9 +269,62 @@ function handleSearch(e) {
 }
 
 function handleBack() {
+  removeBoat();
   switchScreen(AppState.LANDING);
   dom.usernameInput.value = '';
   dom.usernameInput.focus();
+}
+
+// ── Boat Lifecycle ──
+function spawnBoat(stats) {
+  // Remove any existing boat
+  removeBoat();
+
+  const { scene } = getScene();
+  if (!scene) return;
+
+  // Build the boat from stats
+  currentBoat = buildBoat(stats);
+  currentBoat.visible = false;
+  scene.add(currentBoat);
+
+  // Create wake trail
+  boatWake = createWake(scene);
+
+  // Register per-frame animation callback
+  boatUpdateCallback = (elapsed) => {
+    updateBoatAnimation(currentBoat, elapsed);
+    if (boatWake && currentBoat.visible) {
+      boatWake.update(currentBoat.position, elapsed);
+    }
+  };
+  onRenderUpdate(boatUpdateCallback);
+
+  // Play entrance animation
+  playEntranceAnimation(currentBoat);
+}
+
+function removeBoat() {
+  if (currentBoat) {
+    const { scene } = getScene();
+    if (scene) {
+      // Play exit or just remove
+      disposeBoat(currentBoat);
+      scene.remove(currentBoat);
+    }
+    if (boatUpdateCallback) {
+      offRenderUpdate(boatUpdateCallback);
+      boatUpdateCallback = null;
+    }
+    if (boatWake && boatWake.mesh) {
+      const { scene: s } = getScene();
+      if (s) s.remove(boatWake.mesh);
+      boatWake.mesh.geometry.dispose();
+      boatWake.mesh.material.dispose();
+    }
+    currentBoat = null;
+    boatWake = null;
+  }
 }
 
 // ── Initialization ──
