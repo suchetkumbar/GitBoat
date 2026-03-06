@@ -4,7 +4,9 @@
    ============================================ */
 
 /* --- Reset --- */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -13,43 +15,49 @@
 /* --- CSS Custom Properties --- */
 :root {
   /* Dominant: Deep Ocean */
-  --ocean-abyss:     #0a0e17;
-  --ocean-deep:      #0d1b2a;
-  --ocean-midnight:  #1b2838;
+  --ocean-abyss: #0a0e17;
+  --ocean-deep: #0d1b2a;
+  --ocean-midnight: #1b2838;
 
   /* Accent: Bioluminescent */
-  --glow-cyan:       #00d4ff;
-  --glow-teal:       #00ffcc;
-  --glow-amber:      #ffb347;
+  --glow-cyan: #00d4ff;
+  --glow-teal: #00ffcc;
+  --glow-amber: #ffb347;
 
   /* Neutrals */
-  --foam-white:      #e8f0f2;
-  --mist-grey:       #8899aa;
-  --salt-grey:       #3a4a5c;
+  --foam-white: #e8f0f2;
+  --mist-grey: #8899aa;
+  --salt-grey: #3a4a5c;
 
   /* Gradients */
-  --gradient-ocean:  linear-gradient(135deg, #0d1b2a 0%, #0a0e17 50%, #0d1b2a 100%);
-  --gradient-glow:   linear-gradient(90deg, #00d4ff, #00ffcc, #00d4ff);
-  --gradient-shimmer: linear-gradient(90deg, 
-    var(--glow-cyan) 0%, 
-    var(--glow-teal) 25%, 
-    var(--foam-white) 50%, 
-    var(--glow-teal) 75%, 
-    var(--glow-cyan) 100%
-  );
+  --gradient-ocean: linear-gradient(135deg, #0d1b2a 0%, #0a0e17 50%, #0d1b2a 100%);
+  --gradient-glow: linear-gradient(90deg, #00d4ff, #00ffcc, #00d4ff);
+  --gradient-shimmer: linear-gradient(90deg,
+      var(--glow-cyan) 0%,
+      var(--glow-teal) 25%,
+      var(--foam-white) 50%,
+      var(--glow-teal) 75%,
+      var(--glow-cyan) 100%);
 
   /* Typography */
   --font-display: 'Playfair Display', Georgia, serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
 
   /* Spacing (8px grid) */
-  --space-xs:  0.25rem;   /* 4px */
-  --space-sm:  0.5rem;    /* 8px */
-  --space-md:  1rem;      /* 16px */
-  --space-lg:  1.5rem;    /* 24px */
-  --space-xl:  2rem;      /* 32px */
-  --space-2xl: 3rem;      /* 48px */
-  --space-3xl: 4rem;      /* 64px */
+  --space-xs: 0.25rem;
+  /* 4px */
+  --space-sm: 0.5rem;
+  /* 8px */
+  --space-md: 1rem;
+  /* 16px */
+  --space-lg: 1.5rem;
+  /* 24px */
+  --space-xl: 2rem;
+  /* 32px */
+  --space-2xl: 3rem;
+  /* 48px */
+  --space-3xl: 4rem;
+  /* 64px */
 
   /* Borders */
   --radius-sm: 8px;
@@ -107,7 +115,7 @@ body {
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--duration-slow) var(--ease-out),
-              visibility var(--duration-slow);
+    visibility var(--duration-slow);
 }
 
 .screen.active {
@@ -199,8 +207,8 @@ body {
   border-radius: var(--radius-lg);
   outline: none;
   transition: border-color var(--duration-normal) var(--ease-out),
-              box-shadow var(--duration-normal) var(--ease-out),
-              background var(--duration-fast);
+    box-shadow var(--duration-normal) var(--ease-out),
+    background var(--duration-fast);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -213,11 +221,12 @@ body {
 .search-input:focus {
   border-color: var(--glow-cyan);
   box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15),
-              0 0 30px rgba(0, 212, 255, 0.08);
+    0 0 30px rgba(0, 212, 255, 0.08);
   background: rgba(13, 27, 42, 0.85);
+  animation: rippleFocus 0.6s ease-out;
 }
 
-.search-input:focus ~ .search-icon,
+.search-input:focus~.search-icon,
 .search-input-wrapper:hover .search-icon {
   color: var(--glow-cyan);
 }
@@ -237,13 +246,13 @@ body {
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: transform var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-normal);
+    box-shadow var(--duration-normal);
 }
 
 .btn-sail:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0, 212, 255, 0.3),
-              0 0 60px rgba(0, 212, 255, 0.1);
+    0 0 60px rgba(0, 212, 255, 0.1);
 }
 
 .btn-sail:active {
@@ -261,11 +270,10 @@ body {
   left: -100%;
   width: 300%;
   height: 100%;
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(0, 255, 204, 0.4), 
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(0, 255, 204, 0.4),
+      transparent);
   z-index: 1;
   transition: transform 0.6s var(--ease-out);
 }
@@ -324,7 +332,7 @@ body {
   border: 1px solid rgba(0, 212, 255, 0.12);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   animation: tidePulse 4s ease-in-out infinite;
 }
 
@@ -399,6 +407,7 @@ body {
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -532,38 +541,81 @@ body {
    ============================================ */
 
 @keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes waveSlide {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(33.33%); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(33.33%);
+  }
 }
 
 @keyframes compassSpin {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes tidePulse {
-  0%, 100% { border-color: rgba(0, 212, 255, 0.12); }
-  50%      { border-color: rgba(0, 212, 255, 0.25); }
+
+  0%,
+  100% {
+    border-color: rgba(0, 212, 255, 0.12);
+  }
+
+  50% {
+    border-color: rgba(0, 212, 255, 0.25);
+  }
 }
 
 @keyframes avatarPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3); }
-  50%      { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 212, 255, 0);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes fadeInUp {
@@ -571,10 +623,39 @@ body {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes rippleFocus {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4);
+  }
+
+  100% {
+    box-shadow: 0 0 0 15px rgba(0, 212, 255, 0);
+  }
+}
+
+/* --- Wave Wipe Transition --- */
+#wave-wipe {
+  position: fixed;
+  bottom: -10vh;
+  /* Start hidden below */
+  left: 0;
+  width: 100vw;
+  height: 120vh;
+  /* Taller than screen to cover it */
+  background: var(--ocean-midnight);
+  z-index: 1000;
+  pointer-events: none;
+  /* Let clicks pass when not animating */
+  transform: translateY(100%);
+  /* A smooth curved top edge resembling a wave */
+  clip-path: ellipse(150% 100% at 50% 100%);
 }
 
 /* ============================================

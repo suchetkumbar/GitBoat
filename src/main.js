@@ -4,6 +4,7 @@
    ============================================ */
 
 import './styles/main.css';
+import { gsap } from 'gsap';
 import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onRenderUpdate, offRenderUpdate } from './scene/OceanScene.js';
 import { buildBoat, disposeBoat } from './boat/BoatBuilder.js';
 import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake } from './boat/BoatAnimator.js';
@@ -190,6 +191,16 @@ function showProfile(profile, stats) {
   dom.profileCard.style.display = '';
   dom.errorCard.style.display = 'none';
   switchScreen(AppState.PROFILE);
+
+  // Profile fade-up reveal
+  gsap.fromTo(dom.profileCard,
+    { autoAlpha: 0, y: 50 },
+    { autoAlpha: 1, y: 0, duration: 1, ease: 'power3.out' }
+  );
+  gsap.fromTo('.stat-item',
+    { autoAlpha: 0, y: 20 },
+    { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out', delay: 0.4 }
+  );
 }
 
 function showError(message) {
@@ -230,42 +241,59 @@ function handleSearch(e) {
   const username = dom.usernameInput.value.trim();
   if (!username) return;
 
-  switchScreen(AppState.LOADING);
+  // Wave Wipe Transition
+  gsap.to('#wave-wipe', {
+    y: '0%',
+    duration: 1.2,
+    ease: 'power3.inOut',
+    onComplete: () => {
+      switchScreen(AppState.LOADING);
+      
+      // Move wave wipe up to reveal loading
+      gsap.to('#wave-wipe', {
+        y: '-120%', 
+        duration: 1.2,
+        ease: 'power3.inOut',
+        onComplete: () => {
+          gsap.set('#wave-wipe', { y: '100%' }); // Reset
+        }
+      });
+      
+      // Fetch data
+      setTimeout(async () => {
+        stopLoadingMessages();
+        try {
+          // Phase 5: Replace with real API call
+          // import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
+          // const profile = await fetchUserProfile(username);
+          // const repos = await fetchUserRepos(username);
+          // const stats = calculateBoatStats(profile, repos);
 
-  // This will be wired to the GitHub API in Phase 5
-  // For now, display a temporary demo after 2 seconds
-  setTimeout(async () => {
-    stopLoadingMessages();
-    try {
-      // Phase 5: Replace with real API call
-      // import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
-      // const profile = await fetchUserProfile(username);
-      // const repos = await fetchUserRepos(username);
-      // const stats = calculateBoatStats(profile, repos);
+          // Temporary stub data
+          const profile = {
+            login: username,
+            name: username,
+            avatar_url: `https://github.com/${username}.png`,
+            bio: 'Loading real data in Phase 5...',
+          };
+          const stats = {
+            totalCommits: 1234,
+            publicRepos: 42,
+            totalStars: 567,
+            followers: 890,
+            following: 123,
+            accountAge: 5,
+          };
 
-      // Temporary stub data for Phase 1 testing
-      const profile = {
-        login: username,
-        name: username,
-        avatar_url: `https://github.com/${username}.png`,
-        bio: 'Loading real data in Phase 5...',
-      };
-      const stats = {
-        totalCommits: 1234,
-        publicRepos: 42,
-        totalStars: 567,
-        followers: 890,
-        following: 123,
-        accountAge: 5,
-      };
-
-      showProfile(profile, stats);
-      spawnBoat(stats);
-      setTimeout(animateCountUp, 300);
-    } catch (err) {
-      showError(err.message || 'Could not find this sailor on the seas.');
+          showProfile(profile, stats);
+          spawnBoat(stats);
+          setTimeout(animateCountUp, 500); // Trigger slightly later due to fade up
+        } catch (err) {
+          showError(err.message || 'Could not find this sailor on the seas.');
+        }
+      }, 2000);
     }
-  }, 2000);
+  });
 }
 
 function handleBack() {
@@ -273,6 +301,11 @@ function handleBack() {
   switchScreen(AppState.LANDING);
   dom.usernameInput.value = '';
   dom.usernameInput.focus();
+
+  // Landing entrance animation (re-play)
+  gsap.fromTo('.shimmer-text', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'power3.out' });
+  gsap.fromTo('.subtitle', { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.2 });
+  gsap.fromTo('.search-container', { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.4 });
 }
 
 // ── Boat Lifecycle ──
@@ -345,6 +378,12 @@ function init() {
 
   // Activate landing screen
   switchScreen(AppState.LANDING);
+
+  // Initial Landing entrance animation
+  gsap.from('.shimmer-text', { autoAlpha: 0, y: 30, duration: 1, ease: 'power3.out', delay: 0.2 });
+  // Typewriter handles the subtitle, let's just fade its container slightly
+  gsap.from('.subtitle', { autoAlpha: 0, y: 20, duration: 0.8, ease: 'power3.out', delay: 0.5 });
+  gsap.from('.search-container', { autoAlpha: 0, y: 20, duration: 0.8, ease: 'power3.out', delay: 0.8 });
 
   console.log('🚢 GitBoat initialized');
 }
