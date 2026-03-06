@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO -->
+    <title>GitBoat — Your GitHub Story, Told at Sea</title>
+    <meta name="description" content="Transform your GitHub profile into a unique, procedurally generated 3D boat sailing on a stunning animated ocean. Enter any GitHub username and watch your contributions come to life." />
+    <meta name="keywords" content="GitHub, visualization, 3D, boat, Three.js, developer tools, profile" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="GitBoat — Your GitHub Story, Told at Sea" />
+    <meta property="og:description" content="Transform your GitHub profile into a unique 3D boat. Commits become hull size, repos become sails, stars become glowing lanterns." />
+    <meta property="og:type" content="website" />
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚢</text></svg>" />
+    
+    <!-- Fonts: Playfair Display (display) + DM Sans (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- 3D Canvas (fills viewport, behind everything) -->
+    <canvas id="ocean-canvas"></canvas>
+    
+    <!-- UI Overlay -->
+    <div id="app">
+      <!-- Landing Page -->
+      <section id="landing" class="screen active">
+        <div class="landing-content">
+          <h1 class="title shimmer-text">GitBoat</h1>
+          <p class="subtitle" id="subtitle-typewriter"></p>
+          
+          <form id="search-form" class="search-container" autocomplete="off">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input 
+                type="text" 
+                id="username-input" 
+                class="search-input" 
+                placeholder="Enter a GitHub username..." 
+                aria-label="GitHub username"
+                required 
+              />
+            </div>
+            <button type="submit" id="set-sail-btn" class="btn-sail">
+              <span class="btn-text">Set Sail ⛵</span>
+              <span class="btn-wave"></span>
+            </button>
+          </form>
+        </div>
+      </section>
+      
+      <!-- Loading Screen -->
+      <section id="loading" class="screen">
+        <div class="loading-content">
+          <div class="compass-spinner">
+            <svg viewBox="0 0 100 100" class="compass-svg">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--salt-grey)" stroke-width="2" />
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--salt-grey)" stroke-width="0.5" />
+              <line x1="50" y1="8" x2="50" y2="20" stroke="var(--glow-cyan)" stroke-width="2" class="compass-needle" />
+              <line x1="50" y1="80" x2="50" y2="92" stroke="var(--mist-grey)" stroke-width="1.5" />
+              <line x1="8" y1="50" x2="20" y2="50" stroke="var(--mist-grey)" stroke-width="1.5" />
+              <line x1="80" y1="50" x2="92" y2="50" stroke="var(--mist-grey)" stroke-width="1.5" />
+              <circle cx="50" cy="50" r="3" fill="var(--glow-cyan)" />
+            </svg>
+          </div>
+          <p class="loading-text" id="loading-text">Charting course…</p>
+        </div>
+      </section>
+      
+      <!-- Profile View -->
+      <section id="profile" class="screen">
+        <div class="profile-card glass-card" id="profile-card">
+          <button class="back-btn" id="back-btn" aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div class="profile-header">
+            <div class="avatar-ring">
+              <img id="profile-avatar" class="avatar" src="" alt="User avatar" />
+            </div>
+            <div class="profile-info">
+              <h2 id="profile-name" class="profile-name"></h2>
+              <p id="profile-bio" class="profile-bio"></p>
+            </div>
+          </div>
+          <div class="stats-grid" id="stats-grid"></div>
+          <div class="legend-toggle">
+            <button id="legend-btn" class="legend-btn">View Boat Legend ▾</button>
+          </div>
+          <div class="legend-panel" id="legend-panel"></div>
+        </div>
+        
+        <!-- Error State -->
+        <div class="error-card glass-card" id="error-card" style="display: none;">
+          <p class="error-icon">🌊</p>
+          <h3 class="error-title">Lost at Sea</h3>
+          <p class="error-message" id="error-message"></p>
+          <button class="btn-sail" id="try-again-btn">
+            <span class="btn-text">Try Again</span>
+            <span class="btn-wave"></span>
+          </button>
+        </div>
+      </section>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
