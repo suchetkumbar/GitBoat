@@ -8,6 +8,7 @@ import { gsap } from 'gsap';
 import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onRenderUpdate, offRenderUpdate } from './scene/OceanScene.js';
 import { buildBoat, disposeBoat } from './boat/BoatBuilder.js';
 import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake } from './boat/BoatAnimator.js';
+import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
 
 // ── App State ──
 const AppState = {
@@ -263,27 +264,9 @@ function handleSearch(e) {
       setTimeout(async () => {
         stopLoadingMessages();
         try {
-          // Phase 5: Replace with real API call
-          // import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
-          // const profile = await fetchUserProfile(username);
-          // const repos = await fetchUserRepos(username);
-          // const stats = calculateBoatStats(profile, repos);
-
-          // Temporary stub data
-          const profile = {
-            login: username,
-            name: username,
-            avatar_url: `https://github.com/${username}.png`,
-            bio: 'Loading real data in Phase 5...',
-          };
-          const stats = {
-            totalCommits: 1234,
-            publicRepos: 42,
-            totalStars: 567,
-            followers: 890,
-            following: 123,
-            accountAge: 5,
-          };
+          const profile = await fetchUserProfile(username);
+          const repos = await fetchUserRepos(username);
+          const stats = calculateBoatStats(profile, repos);
 
           showProfile(profile, stats);
           spawnBoat(stats);
