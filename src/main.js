@@ -5,9 +5,9 @@
 
 import './styles/main.css';
 import { gsap } from 'gsap';
-import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onRenderUpdate, offRenderUpdate } from './scene/OceanScene.js';
+import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onRenderUpdate, offRenderUpdate, toggleNightMode } from './scene/OceanScene.js';
 import { buildBoat, disposeBoat } from './boat/BoatBuilder.js';
-import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake } from './boat/BoatAnimator.js';
+import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake, highlightPart, unhighlightPart } from './boat/BoatAnimator.js';
 import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
 
 // ── App State ──
@@ -46,6 +46,9 @@ const dom = {
   statsGrid: document.getElementById('stats-grid'),
   legendBtn: document.getElementById('legend-btn'),
   legendPanel: document.getElementById('legend-panel'),
+  themeToggleBtn: document.getElementById('theme-toggle-btn'),
+  themeIconSun: document.getElementById('theme-icon-sun'),
+  themeIconMoon: document.getElementById('theme-icon-moon'),
 };
 
 // ── State Transitions ──
@@ -165,21 +168,37 @@ function setupLegend() {
 // ── Stats Rendering ──
 function renderStats(stats) {
   const items = [
-    { value: stats.totalCommits ?? '—', label: 'Commits', icon: '📏 Hull' },
-    { value: stats.publicRepos, label: 'Repos', icon: '⛵ Sails' },
-    { value: stats.totalStars, label: 'Stars', icon: '⭐ Lanterns' },
-    { value: stats.followers, label: 'Followers', icon: '👥 Crew' },
-    { value: stats.following, label: 'Following', icon: '🚢 Fleet' },
-    { value: stats.accountAge + 'y', label: 'Account Age', icon: '📅 Patina' },
+    { value: stats.totalCommits ?? '—', label: 'Commits', icon: '📏 Hull', part: 'hull' },
+    { value: stats.publicRepos, label: 'Repos', icon: '⛵ Sails', part: 'sails' },
+    { value: stats.totalStars, label: 'Stars', icon: '⭐ Lanterns', part: 'lanterns' },
+    { value: stats.followers, label: 'Followers', icon: '👥 Crew', part: 'crew' },
+    { value: stats.following, label: 'Following', icon: '🚢 Fleet', part: 'fleet' },
+    { value: stats.accountAge + 'y', label: 'Account Age', icon: '📅 Patina', part: 'hull' },
   ];
 
   dom.statsGrid.innerHTML = items.map(item => `
-    <div class="stat-item">
+    <div class="stat-item" data-part="${item.part}">
       <div class="stat-value" data-count="${typeof item.value === 'number' ? item.value : 0}">${item.value}</div>
       <div class="stat-label">${item.label}</div>
       <div class="stat-boat-icon">${item.icon}</div>
     </div>
   `).join('');
+
+  // Attach hover events
+  const statItems = dom.statsGrid.querySelectorAll('.stat-item');
+  statItems.forEach(item => {
+    item.addEventListener('mouseenter', (e) => {
+      const part = e.currentTarget.dataset.part;
+      if (currentBoat && part) {
+        highlightPart(currentBoat, part);
+      }
+    });
+    item.addEventListener('mouseleave', () => {
+      if (currentBoat) {
+        unhighlightPart(currentBoat);
+      }
+    });
+  });
 }
 
 // ── Profile Display ──
@@ -352,6 +371,21 @@ function init() {
 
   // Set up legend
   setupLegend();
+
+  // Theme Toggle
+  let isNightMode = false;
+  dom.themeToggleBtn.addEventListener('click', () => {
+    isNightMode = !isNightMode;
+    toggleNightMode(isNightMode);
+    
+    if (isNightMode) {
+      dom.themeIconSun.style.display = 'none';
+      dom.themeIconMoon.style.display = '';
+    } else {
+      dom.themeIconSun.style.display = '';
+      dom.themeIconMoon.style.display = 'none';
+    }
+  });
 
   // Start typewriter
   startTypewriter();

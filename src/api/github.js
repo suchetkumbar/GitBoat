@@ -104,6 +104,7 @@ export function calculateBoatStats(profile, repos) {
     totalStars: totalStars,
     followers: profile.followers,
     following: profile.following,
-    accountAge: Math.floor(ageInYears * 10) / 10 // 1 decimal place
+    accountAge: Math.floor(ageInYears * 10) / 10, // 1 decimal place
+    avatarUrl: profile.avatar_url
   };
 }

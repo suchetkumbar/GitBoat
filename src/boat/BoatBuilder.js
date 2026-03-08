@@ -69,15 +69,36 @@ const MATERIALS = {
 };
 
 // ── Stat Normalization ──
-// Maps raw GitHub stats to 0-1 range for boat building
+// Maps raw GitHub stats to user-friendly ranges for boat building
 function normalizeStats(stats) {
+  // Use a root curve for commits so average users still get a decent sized hull
+  // e.g., 700 commits = ~0.9 scale, 5000 commits = ~1.3 scale
+  const commitsRatio = Math.min((stats.totalCommits || 0) / 3000, 1.0);
+  const hullScale = 0.4 + Math.pow(commitsRatio, 0.6) * 0.9; // Scale from 0.4 to 1.3
+  
+  // Sails: 1 sail per 3 repos. Max 6 masts.
+  const sailCount = Math.min(Math.max(Math.ceil((stats.publicRepos || 0) / 4), 1), 6);
+  
+  // Lanterns: 0 if 0 stars. 1 lantern per 10 stars, max 10.
+  const lanternCount = (stats.totalStars === 0) ? 0 : Math.min(Math.max(Math.ceil(stats.totalStars / 10), 1), 10);
+  
+  // Crew: 0 if 0 followers. 1 per 2 followers, max 8.
+  const crewCount = (stats.followers === 0) ? 0 : Math.min(Math.max(Math.ceil(stats.followers / 2), 1), 8);
+  
+  // Patina: Account age mapping 0-1
+  const patina = clamp((stats.accountAge || 0) / 10, 0.0, 1.0);
+  
+  // Fleet: 0 if 0 following. 1 per 2 following, max 5.
+  const fleetCount = (stats.following === 0) ? 0 : Math.min(Math.max(Math.ceil(stats.following / 2), 1), 5);
+
   return {
-    hullScale: clamp(stats.totalCommits / 5000, 0.4, 1.0),   // 0-5000 commits
-    sailCount: Math.min(Math.max(Math.ceil(stats.publicRepos / 10), 1), 4), // 1-4 sails
-    lanternCount: Math.min(Math.max(Math.ceil(stats.totalStars / 50), 1), 8), // 1-8 lanterns
-    crewCount: Math.min(Math.max(Math.ceil(stats.followers / 100), 1), 6),   // 1-6 crew
-    patina: clamp(stats.accountAge / 10, 0.0, 1.0),           // 0-10 years
-    fleetCount: Math.min(Math.max(Math.ceil(stats.following / 50), 0), 3),    // 0-3 fleet
+    hullScale,
+    sailCount,
+    lanternCount,
+    crewCount,
+    patina,
+    fleetCount,
+    avatarUrl: stats.avatarUrl,
   };
 }
 
@@ -112,11 +133,14 @@ export function buildBoat(stats) {
   const crew = buildCrew(normalized.hullScale, normalized.crewCount);
   boatGroup.add(crew);
 
-  const flag = buildFlag(normalized.hullScale);
+  const flag = buildFlag(normalized.hullScale, normalized.avatarUrl);
   boatGroup.add(flag);
 
   const railings = buildRailings(normalized.hullScale);
   boatGroup.add(railings);
+
+  const fleet = buildFleet(normalized.hullScale, normalized.fleetCount);
+  boatGroup.add(fleet);
 
   // Store normalized stats for animation use
   boatGroup.userData = { normalized, sails };
@@ -365,7 +389,7 @@ function buildCrew(scale, count) {
 }
 
 // ── Flag ──
-function buildFlag(scale) {
+function buildFlag(scale, avatarUrl) {
   const flagGroup = new THREE.Group();
   flagGroup.name = 'flag';
 
@@ -383,7 +407,21 @@ function buildFlag(scale) {
   }
   flagGeo.computeVertexNormals();
 
-  const flagMesh = new THREE.Mesh(flagGeo, MATERIALS.flag);
+  let flagMat = MATERIALS.flag;
+  
+  if (avatarUrl) {
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load(avatarUrl);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    flagMat = new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.4,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+    });
+  }
+
+  const flagMesh = new THREE.Mesh(flagGeo, flagMat);
   flagMesh.position.set(
     length * 0.35 * 0.7,    // Near front mast
     mastHeight + 0.15,       // Top of tallest mast
@@ -430,4 +468,74 @@ function buildRailings(scale) {
   });
 
   return railGroup;
+}
+
+// ── Fleet (Companion Boats) ──
+function buildFleet(primaryScale, count) {
+  const fleetGroup = new THREE.Group();
+  fleetGroup.name = 'fleet';
+
+  if (count <= 0) return fleetGroup;
+
+  // Simplified geometry for companion boats
+  const length = 1.8;
+  const width = 0.6;
+  
+  // Hull body using simple lathed shape
+  const hullPoints = [];
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    const x = t * length - length / 2;
+    const y = (1 - Math.pow(Math.abs(2 * t - 1), 2.5)) * width;
+    hullPoints.push(new THREE.Vector2(y, x));
+  }
+  const simpleHullGeo = new THREE.LatheGeometry(hullPoints, 12, 0, Math.PI);
+  simpleHullGeo.rotateX(Math.PI / 2);
+  simpleHullGeo.rotateZ(Math.PI / 2);
+  simpleHullGeo.scale(1, 0.5, 1);
+
+  const simpleSailGeo = new THREE.PlaneGeometry(1.0, 1.5, 4, 2);
+  const sailPos = simpleSailGeo.attributes.position;
+  for (let v = 0; v < sailPos.count; v++) {
+    const sx = sailPos.getX(v);
+    const sy = sailPos.getY(v);
+    const belly = (1 - Math.pow(sx / 0.5, 2)) * (1 - Math.pow(sy / 0.75, 2)) * 0.15;
+    sailPos.setZ(v, belly);
+  }
+  simpleSailGeo.computeVertexNormals();
+  simpleSailGeo.translate(0, 0.75, 0.05);
+
+  for (let i = 0; i < count; i++) {
+    const boat = new THREE.Group();
+    
+    // Hull
+    const hull = new THREE.Mesh(simpleHullGeo, MATERIALS.hullDark);
+    hull.position.y = -0.2;
+    boat.add(hull);
+
+    // Mast
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.8), MATERIALS.mast);
+    mast.position.y = 0.9;
+    boat.add(mast);
+
+    // Sail
+    const sail = new THREE.Mesh(simpleSailGeo, MATERIALS.sail);
+    sail.position.y = 0.2;
+    sail.userData.bellySail = true; // For animation
+    boat.add(sail);
+
+    // Position them in a V-formation behind the main boat
+    const row = Math.floor(i / 2) + 1;
+    const side = (i % 2 === 0) ? -1 : 1;
+    
+    // offset behind and to the sides
+    const primaryLen = 4 * primaryScale + 2;
+    const xPos = -(primaryLen / 2) - (row * 2.5);
+    const zPos = side * (row * 1.5 + 1.0);
+    
+    boat.position.set(xPos, 0, zPos);
+    fleetGroup.add(boat);
+  }
+
+  return fleetGroup;
 }

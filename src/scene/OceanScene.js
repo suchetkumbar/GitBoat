@@ -45,6 +45,7 @@ let clock;
 let animationFrameId = null;
 let isRunning = false;
 let onUpdateCallbacks = [];
+let hemiLight, sunLight, skyMat;
 
 // ── Public API ──
 
@@ -86,11 +87,17 @@ export function initOceanScene(canvas) {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.maxPolarAngle = Math.PI * 0.48; // Don't go below water
-  controls.minDistance = 5;
-  controls.maxDistance = 60;
+  controls.minDistance = 1.0; // Allow extreme close up
+  controls.maxDistance = 250; // Allow extreme pull back
+  controls.enableZoom = true;
+  controls.zoomSpeed = 0.6; // Smoother zoom curve
   controls.enablePan = false;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.3;
+  controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN
+  };
 
   // Build scene elements
   createLighting();
@@ -225,11 +232,97 @@ export function offRenderUpdate(callback) {
   onUpdateCallbacks = onUpdateCallbacks.filter(cb => cb !== callback);
 }
 
+/**
+ * Toggle Night/Day Mode
+ * Adjusts lighting, sky color, and fog density to simulate moonlit ocean
+ */
+export function toggleNightMode(isNight) {
+  if (!scene) return;
+
+  const duration = 2.0; // Seconds for transition using a quick tween logic
+
+  // Target Colors
+  const targetFogColor = isNight ? new THREE.Color(0x02050a) : CONFIG.colors.fog;
+  const targetDeepColor = isNight ? new THREE.Color(0x010308) : CONFIG.colors.deep;
+  const targetSurfaceColor = isNight ? new THREE.Color(0x042035) : CONFIG.colors.surface;
+  
+  // Ocean Shader Tween
+  if (oceanMaterial) {
+    // Quick manual tweening using requestAnimationFrame (GSAP is optional here)
+    const startDeep = oceanMaterial.uniforms.uDeepColor.value.clone();
+    const startSurface = oceanMaterial.uniforms.uSurfaceColor.value.clone();
+    
+    let startTime = null;
+    const animateOceanColors = (time) => {
+      if (!startTime) startTime = time;
+      const progress = Math.min((time - startTime) / (duration * 1000), 1.0);
+      
+      const easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2; // Ease in out
+
+      oceanMaterial.uniforms.uDeepColor.value.copy(startDeep).lerp(targetDeepColor, easeProgress);
+      oceanMaterial.uniforms.uSurfaceColor.value.copy(startSurface).lerp(targetSurfaceColor, easeProgress);
+
+      if (skyMat) {
+        skyMat.uniforms.uNightMode.value = isNight ? easeProgress : (1.0 - easeProgress);
+      }
+
+      if (progress < 1.0) requestAnimationFrame(animateOceanColors);
+    };
+    requestAnimationFrame(animateOceanColors);
+  }
+
+  // Fog Tween
+  if (scene.fog) {
+    const startFog = scene.fog.color.clone();
+    let startTime = null;
+    const animateFog = (time) => {
+      if (!startTime) startTime = time;
+      const progress = Math.min((time - startTime) / (duration * 1000), 1.0);
+      scene.fog.color.copy(startFog).lerp(targetFogColor, progress);
+      if (progress < 1.0) requestAnimationFrame(animateFog);
+    };
+    requestAnimationFrame(animateFog);
+  }
+
+  // Lights Tween
+  if (hemiLight) {
+    const targetIntensity = isNight ? 0.1 : 0.4;
+    const startIntensity = hemiLight.intensity;
+    // We could write another tight loop like above, but simple linear interpolation works for lights over 2s
+    let startTime = null;
+    const animateHemi = (time) => {
+      if (!startTime) startTime = time;
+      const progress = Math.min((time - startTime) / (duration * 1000), 1.0);
+      hemiLight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
+      if (progress < 1.0) requestAnimationFrame(animateHemi);
+    };
+    requestAnimationFrame(animateHemi);
+  }
+
+  if (sunLight) {
+    const targetIntensity = isNight ? 0.3 : CONFIG.sun.intensity;
+    // Cool moonlight vs Warm sunlight
+    const targetColor = isNight ? new THREE.Color(0xb0d0ff) : new THREE.Color(CONFIG.sun.color);
+    const startIntensity = sunLight.intensity;
+    const startColor = sunLight.color.clone();
+
+    let startTime = null;
+    const animateSun = (time) => {
+      if (!startTime) startTime = time;
+      const progress = Math.min((time - startTime) / (duration * 1000), 1.0);
+      sunLight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
+      sunLight.color.copy(startColor).lerp(targetColor, progress);
+      if (progress < 1.0) requestAnimationFrame(animateSun);
+    };
+    requestAnimationFrame(animateSun);
+  }
+}
+
 // ── Private Functions ──
 
 function createLighting() {
   // Hemisphere light (sky + ground bounce)
-  const hemiLight = new THREE.HemisphereLight(
+  hemiLight = new THREE.HemisphereLight(
     CONFIG.colors.sky,
     CONFIG.colors.deep,
     0.4
@@ -237,7 +330,7 @@ function createLighting() {
   scene.add(hemiLight);
 
   // Directional sun light
-  const sunLight = new THREE.DirectionalLight(
+  sunLight = new THREE.DirectionalLight(
     CONFIG.sun.color,
     CONFIG.sun.intensity
   );
@@ -282,7 +375,10 @@ function createOcean() {
 function createSkyDome() {
   // Large inverted sphere for the sky
   const skyGeo = new THREE.SphereGeometry(90, 32, 32);
-  const skyMat = new THREE.ShaderMaterial({
+  skyMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uNightMode: { value: 0.0 }
+    },
     vertexShader: `
       varying vec3 vWorldPosition;
       void main() {
@@ -292,13 +388,24 @@ function createSkyDome() {
       }
     `,
     fragmentShader: `
+      uniform float uNightMode;
       varying vec3 vWorldPosition;
       void main() {
         float height = normalize(vWorldPosition).y;
-        // Deep navy at horizon → darker above
-        vec3 bottomColor = vec3(0.04, 0.08, 0.14);
-        vec3 topColor = vec3(0.01, 0.02, 0.06);
-        vec3 horizonGlow = vec3(0.08, 0.15, 0.25);
+        
+        // Day/Evening
+        vec3 bottomColorDay = vec3(0.04, 0.08, 0.14);
+        vec3 topColorDay = vec3(0.01, 0.02, 0.06);
+        vec3 horizonGlowDay = vec3(0.08, 0.15, 0.25);
+        
+        // Night
+        vec3 bottomColorNight = vec3(0.0, 0.02, 0.05);
+        vec3 topColorNight = vec3(0.0, 0.0, 0.01);
+        vec3 horizonGlowNight = vec3(0.02, 0.04, 0.1);
+        
+        vec3 bottomColor = mix(bottomColorDay, bottomColorNight, uNightMode);
+        vec3 topColor = mix(topColorDay, topColorNight, uNightMode);
+        vec3 horizonGlow = mix(horizonGlowDay, horizonGlowNight, uNightMode);
         
         float t = max(height, 0.0);
         vec3 color = mix(bottomColor, topColor, pow(t, 0.6));
@@ -308,10 +415,11 @@ function createSkyDome() {
         horizonFactor = pow(horizonFactor, 8.0);
         color += horizonGlow * horizonFactor * 0.5;
         
-        // Subtle stars
+        // Subtle stars (brighter at night)
         float starNoise = fract(sin(dot(normalize(vWorldPosition.xz) * 300.0, vec2(12.9898, 78.233))) * 43758.5453);
         if (starNoise > 0.997 && height > 0.15) {
-          color += vec3(0.6, 0.7, 0.8) * (starNoise - 0.997) * 300.0 * smoothstep(0.15, 0.5, height);
+          float starIntensity = mix(300.0, 1000.0, uNightMode);
+          color += vec3(0.6, 0.7, 0.8) * (starNoise - 0.997) * starIntensity * smoothstep(0.15, 0.5, height);
         }
         
         gl_FragColor = vec4(color, 1.0);

@@ -325,6 +325,38 @@ body {
   gap: var(--space-lg);
 }
 
+/* Theme Toggle */
+.theme-toggle-btn {
+  position: absolute;
+  top: var(--space-xl);
+  right: var(--space-xl);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: rgba(13, 27, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  color: var(--glow-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all var(--duration-fast);
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.theme-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 .glass-card {
   background: rgba(13, 27, 42, 0.65);
   backdrop-filter: blur(16px) saturate(1.2);

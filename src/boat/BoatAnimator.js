@@ -101,6 +101,46 @@ export function updateBoatAnimation(boat, time) {
       member.rotation.z = Math.sin(time * 1.5 + index * 1.8) * 0.05;
     });
   }
+
+  // ── Fleet Bobbing ──
+  const fleetGroup = boat.getObjectByName('fleet');
+  if (fleetGroup) {
+    fleetGroup.children.forEach((fleetBoat) => {
+      const worldPos = new THREE.Vector3();
+      fleetBoat.getWorldPosition(worldPos);
+
+      // We already translated the parent boat to waveY, so offset the difference
+      const localWaveY = getWaveHeightAt(worldPos.x, worldPos.z, time) - waveY;
+      
+      // Base Y offset for fleet is 0 in builder, so just apply wave offset directly
+      fleetBoat.position.y = localWaveY;
+
+      const waveYFront = getWaveHeightAt(worldPos.x + 0.5, worldPos.z, time);
+      const waveYBack = getWaveHeightAt(worldPos.x - 0.5, worldPos.z, time);
+      fleetBoat.rotation.x = (waveYBack - waveYFront) * 0.2;
+      
+      // Independent roll
+      const waveYLeft = getWaveHeightAt(worldPos.x, worldPos.z - 0.5, time);
+      const waveYRight = getWaveHeightAt(worldPos.x, worldPos.z + 0.5, time);
+      fleetBoat.rotation.z = (waveYLeft - waveYRight) * 0.3;
+      
+      // Independent sail billow for fleet
+      const sail = fleetBoat.children.find(c => c.userData && c.userData.bellySail);
+      if (sail) {
+        const positions = sail.geometry.attributes.position;
+        if (!sail.userData.originalPositions) {
+          sail.userData.originalPositions = new Float32Array(positions.array);
+        }
+        for (let v = 0; v < positions.count; v++) {
+          const origZ = sail.userData.originalPositions[v * 3 + 2];
+          const x = positions.getX(v);
+          const ripple = Math.sin(time * 3 + x * 5 + fleetBoat.position.x) * 0.02;
+          positions.setZ(v, origZ + ripple);
+        }
+        positions.needsUpdate = true;
+      }
+    });
+  }
 }
 
 /**
@@ -239,4 +279,119 @@ export function createWake(scene) {
       wake.geometry.attributes.position.needsUpdate = true;
     },
   };
+}
+
+/**
+ * Highlight a specific part of the boat (Micro-interaction)
+ * @param {THREE.Group} boat - The boat group
+ * @param {string} partName - Name of the part to highlight (hull, sails, lanterns, crew, flag)
+ */
+export function highlightPart(boat, partName) {
+  if (!boat) return;
+
+  // Restore any currently highlighted parts first
+  unhighlightPart(boat);
+
+  let targetGroup = null;
+
+  if (partName === 'hull') targetGroup = boat.getObjectByName('hull');
+  if (partName === 'sails') targetGroup = boat.getObjectByName('sails');
+  if (partName === 'lanterns') targetGroup = boat.getObjectByName('lanterns');
+  if (partName === 'crew') targetGroup = boat.getObjectByName('crew');
+  if (partName === 'flag') targetGroup = boat.getObjectByName('flag');
+
+  if (targetGroup) {
+    boat.userData.highlightedGroup = targetGroup;
+
+    // Tween scale up slightly
+    gsap.to(targetGroup.scale, {
+      x: 1.15, y: 1.15, z: 1.15,
+      duration: 0.3,
+      ease: 'back.out(2)',
+    });
+
+    // If meshes have emissive properties, boost them
+    targetGroup.traverse(child => {
+      if (child.isMesh && child.material) {
+        // Clone material so we don't highlight ALL instances if sharing materials
+        if (!child.userData.originalMaterial) {
+          child.userData.originalMaterial = child.material;
+          child.material = child.material.clone();
+        }
+        
+        if (child.material.emissive) {
+          gsap.to(child.material.emissive, {
+            r: 0.0, g: 0.8, b: 1.0, // Cyan highlight
+            duration: 0.3
+          });
+          gsap.to(child.material, {
+            emissiveIntensity: 1.5,
+            duration: 0.3
+          });
+        }
+      }
+      // If it's a point light (lanterns)
+      if (child.isPointLight) {
+        if (child.userData.baseIntensity === undefined) {
+          child.userData.baseIntensity = child.intensity;
+        }
+        gsap.to(child, {
+          intensity: 2.0,
+          distance: 6,
+          duration: 0.3
+        });
+      }
+    });
+  }
+}
+
+/**
+ * Restore highlighted parts back to normal
+ * @param {THREE.Group} boat 
+ */
+export function unhighlightPart(boat) {
+  if (!boat || !boat.userData.highlightedGroup) return;
+
+  const targetGroup = boat.userData.highlightedGroup;
+
+  // Restore scale
+  gsap.to(targetGroup.scale, {
+    x: 1, y: 1, z: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+  });
+
+  // Restore materials
+  targetGroup.traverse(child => {
+    if (child.isMesh && child.userData.originalMaterial) {
+      if (child.material.emissive) {
+        const origEmissive = child.userData.originalMaterial.emissive;
+        const origIntensity = child.userData.originalMaterial.emissiveIntensity;
+        gsap.to(child.material.emissive, {
+          r: origEmissive.r, g: origEmissive.g, b: origEmissive.b,
+          duration: 0.4
+        });
+        gsap.to(child.material, {
+          emissiveIntensity: origIntensity,
+          duration: 0.4,
+          onComplete: () => {
+            // Re-apply original shared material
+            child.material.dispose();
+            child.material = child.userData.originalMaterial;
+            child.userData.originalMaterial = null;
+          }
+        });
+      }
+    }
+    // Restore point lights
+    if (child.isPointLight && child.userData.baseIntensity !== undefined) {
+      gsap.to(child, {
+        intensity: child.userData.baseIntensity,
+        distance: 4,
+        duration: 0.4
+      });
+    }
+  });
+
+  boat.userData.highlightedGroup = null;
 }
