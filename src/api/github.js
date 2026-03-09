@@ -81,16 +81,28 @@ export async function fetchUserRepos(username) {
 }
 
 export function calculateBoatStats(profile, repos) {
-  // Approximate commits based on repo sizes (as we don't have true commit count without auth/GraphQL)
-  // 1 KB size roughly ~1 commit for small projects, but let's just use the direct size as a proxy, 
-  // or a combination of size and repos.
   let totalSizeProxy = 0;
   let totalStars = 0;
+  const languageCounts = {};
 
   repos.forEach(repo => {
     totalSizeProxy += (repo.size || 0);
     totalStars += (repo.stargazers_count || 0);
+    
+    if (repo.language) {
+      // Weight primary language by repo size to find the true main language
+      languageCounts[repo.language] = (languageCounts[repo.language] || 0) + (repo.size || 1);
+    }
   });
+
+  let primaryLanguage = 'Unknown';
+  let maxLangScore = 0;
+  for (const [lang, score] of Object.entries(languageCounts)) {
+    if (score > maxLangScore) {
+      maxLangScore = score;
+      primaryLanguage = lang;
+    }
+  }
 
   // Calculate account age in years
   const createdAt = new Date(profile.created_at);
@@ -105,6 +117,7 @@ export function calculateBoatStats(profile, repos) {
     followers: profile.followers,
     following: profile.following,
     accountAge: Math.floor(ageInYears * 10) / 10, // 1 decimal place
-    avatarUrl: profile.avatar_url
+    avatarUrl: profile.avatar_url,
+    primaryLanguage: primaryLanguage
   };
 }

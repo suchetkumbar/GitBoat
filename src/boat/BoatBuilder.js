@@ -99,6 +99,7 @@ function normalizeStats(stats) {
     patina,
     fleetCount,
     avatarUrl: stats.avatarUrl,
+    primaryLanguage: stats.primaryLanguage || 'Unknown',
   };
 }
 
@@ -117,7 +118,7 @@ export function buildBoat(stats) {
   boatGroup.name = 'boat';
 
   // Build components in dependency order
-  const hull = buildHull(normalized.hullScale, normalized.patina);
+  const hull = buildHull(normalized.hullScale, normalized.patina, normalized.primaryLanguage);
   boatGroup.add(hull);
 
   const deck = buildDeck(normalized.hullScale);
@@ -160,23 +161,61 @@ export function disposeBoat(boatGroup) {
 }
 
 // ── Hull ──
-function buildHull(scale, patina) {
+function buildHull(scale, patina, language) {
   const hullGroup = new THREE.Group();
   hullGroup.name = 'hull';
 
-  const length = 4 * scale + 2;
-  const width = 1.2 * scale + 0.6;
-  const height = 0.8 * scale + 0.4;
+  let lengthMult = 1.0;
+  let widthMult = 1.0;
+  let heightMult = 1.0;
+  let materialType = 'wood';
+  let shapeStyle = 'default';
+
+  if (['JavaScript', 'TypeScript', 'Vue', 'React'].includes(language)) {
+    shapeStyle = 'sleek';
+    widthMult = 0.8;
+    heightMult = 0.7;
+  } else if (['Python', 'Jupyter Notebook'].includes(language)) {
+    shapeStyle = 'rounded';
+    materialType = 'darkMetal';
+    lengthMult = 1.2;
+    widthMult = 0.9;
+  } else if (['Java', 'C#', 'PHP'].includes(language)) {
+    shapeStyle = 'bulky';
+    widthMult = 1.3;
+    heightMult = 1.4;
+  } else if (['C', 'C++', 'Rust', 'Go'].includes(language)) {
+    shapeStyle = 'angular';
+    materialType = 'metal';
+    lengthMult = 1.1;
+  }
+
+  const length = (4 * scale + 2) * lengthMult;
+  const width = (1.2 * scale + 0.6) * widthMult;
+  const height = (0.8 * scale + 0.4) * heightMult;
 
   // Hull body using LatheGeometry for smooth boat shape
   const hullPoints = [];
-  const segments = 12;
+  const segments = 16;
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     // Boat cross-section: wider at middle, narrower at bow/stern
     const x = t * length - length / 2;
-    const bowFactor = 1 - Math.pow(Math.abs(2 * t - 1), 2.5);
-    const y = bowFactor * width;
+    
+    let bowFactor;
+    if (shapeStyle === 'sleek') {
+      bowFactor = 1 - Math.pow(t, 2.0); // wide stern, sharp bow
+    } else if (shapeStyle === 'rounded') {
+      bowFactor = Math.sin(Math.acos(Math.abs(2 * t - 1))); // fully rounded
+    } else if (shapeStyle === 'bulky') {
+      bowFactor = 1 - Math.pow(Math.abs(2 * t - 1), 4); // boxy
+    } else if (shapeStyle === 'angular') {
+      bowFactor = 1 - Math.abs(2 * t - 1); // diamond
+    } else {
+      bowFactor = 1 - Math.pow(Math.abs(2 * t - 1), 2.5); // default
+    }
+
+    const y = Math.max(bowFactor * width, 0.05); // prevent zero-radius
     hullPoints.push(new THREE.Vector2(y, x));
   }
 
@@ -185,10 +224,24 @@ function buildHull(scale, patina) {
   hullGeometry.rotateZ(Math.PI / 2);
   hullGeometry.scale(1, 0.5, 1);
 
+  // Apply material based on language
+  let hullMat;
+  if (materialType === 'metal') {
+    hullMat = new THREE.MeshStandardMaterial({ color: 0x444a55, roughness: 0.4, metalness: 0.8 });
+  } else if (materialType === 'darkMetal') {
+    hullMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.6, metalness: 0.6 });
+  } else {
+    hullMat = MATERIALS.hull.clone();
+  }
+
   // Apply patina color shift
-  const hullMat = MATERIALS.hull.clone();
   if (patina > 0.5) {
-    hullMat.color.lerp(new THREE.Color(0x2a3a2a), (patina - 0.5) * 0.6);
+    if (materialType === 'wood') {
+      hullMat.color.lerp(new THREE.Color(0x2a3a2a), (patina - 0.5) * 0.6);
+    } else {
+      hullMat.color.lerp(new THREE.Color(0x8a3a1a), (patina - 0.5) * 0.8); // Rust
+      hullMat.roughness += 0.2;
+    }
   }
 
   const hullMesh = new THREE.Mesh(hullGeometry, hullMat);

@@ -543,6 +543,34 @@ body {
   font-size: 0.7rem;
 }
 
+/* Profile Actions (Snapshot, Audio) */
+.profile-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+  justify-content: center;
+}
+
+.btn-action {
+  padding: var(--space-xs) var(--space-md);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--mist-grey);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.btn-action:hover,
+.btn-action.active {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: var(--glow-cyan);
+  color: var(--glow-cyan);
+}
+
 /* Error Card */
 .error-card {
   text-align: center;

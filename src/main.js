@@ -9,6 +9,7 @@ import { initOceanScene, setCameraForProfile, setCameraForLanding, getScene, onR
 import { buildBoat, disposeBoat } from './boat/BoatBuilder.js';
 import { updateBoatAnimation, playEntranceAnimation, playExitAnimation, createWake, highlightPart, unhighlightPart } from './boat/BoatAnimator.js';
 import { fetchUserProfile, fetchUserRepos, calculateBoatStats } from './api/github.js';
+import { toggleAudio } from './scene/AudioEngine.js';
 
 // ── App State ──
 const AppState = {
@@ -49,6 +50,8 @@ const dom = {
   themeToggleBtn: document.getElementById('theme-toggle-btn'),
   themeIconSun: document.getElementById('theme-icon-sun'),
   themeIconMoon: document.getElementById('theme-icon-moon'),
+  snapshotBtn: document.getElementById('snapshot-btn'),
+  audioBtn: document.getElementById('audio-btn'),
 };
 
 // ── State Transitions ──
@@ -310,6 +313,45 @@ function handleBack() {
   gsap.fromTo('.search-container', { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.4 });
 }
 
+function handleSnapshot() {
+  const { renderer, scene, camera } = getScene();
+  if (!renderer || !scene || !camera) return;
+
+  // Force render before capture to ensure latest frame is caught (due to preserveDrawingBuffer: false default)
+  renderer.render(scene, camera);
+  const dataURL = renderer.domElement.toDataURL('image/png');
+  
+  const originalText = dom.snapshotBtn.innerHTML;
+  dom.snapshotBtn.innerHTML = '✅ Saved!';
+  dom.snapshotBtn.classList.add('active');
+  
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = `gitboat-${dom.profileName.textContent.replace(/\s+/g, '-').toLowerCase() || 'snapshot'}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  setTimeout(() => {
+    dom.snapshotBtn.innerHTML = originalText;
+    dom.snapshotBtn.classList.remove('active');
+  }, 2000);
+}
+
+function handleAudioToggle() {
+  const { camera } = getScene();
+  if (!camera) return;
+  
+  const isEnabled = toggleAudio(camera);
+  if (isEnabled) {
+    dom.audioBtn.innerHTML = '🔊 Audio: On';
+    dom.audioBtn.classList.add('active');
+  } else {
+    dom.audioBtn.innerHTML = '🔈 Audio: Off';
+    dom.audioBtn.classList.remove('active');
+  }
+}
+
 // ── Boat Lifecycle ──
 function spawnBoat(stats) {
   // Remove any existing boat
@@ -368,6 +410,8 @@ function init() {
   dom.searchForm.addEventListener('submit', handleSearch);
   dom.backBtn.addEventListener('click', handleBack);
   dom.tryAgainBtn.addEventListener('click', handleBack);
+  dom.snapshotBtn.addEventListener('click', handleSnapshot);
+  dom.audioBtn.addEventListener('click', handleAudioToggle);
 
   // Set up legend
   setupLegend();
